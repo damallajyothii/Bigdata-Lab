@@ -1,0 +1,126 @@
+++++++++++++++++++++++++UniqueStatistics.java
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+
+public class UniqueStatistics {
+
+    public static class StatsMapper extends Mapper<Object, Text, Text, IntWritable> {
+        private final static Text maxKey = new Text("max");
+        private final static Text sumKey = new Text("sum");
+        private final static Text countKey = new Text("count");
+        private final static Text distinctKey = new Text("distinct");
+        private final static IntWritable one = new IntWritable(1);
+        
+        @Override
+        public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+            // Parse the integer from the input
+            int number = Integer.parseInt(value.toString());
+            
+            // Emit for max value
+            context.write(maxKey, new IntWritable(number));
+            
+            // Emit for sum and count
+            context.write(sumKey, new IntWritable(number));
+            context.write(countKey, one);
+            
+            // Emit for distinct integers
+            context.write(distinctKey, new IntWritable(number));
+        }
+    }
+
+    public static class StatsReducer extends Reducer<Text, IntWritable, Text, Text> {
+        private int max = Integer.MIN_VALUE;
+        private int sum = 0;
+        private int count = 0;
+        private Set<Integer> distinctIntegers = new HashSet<>();
+
+        @Override
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            if (key.equals(new Text("max"))) {
+                // Calculate max
+                for (IntWritable val : values) {
+                    max = Math.max(max, val.get());
+                }
+            } else if (key.equals(new Text("sum"))) {
+                // Calculate sum
+                for (IntWritable val : values) {
+                    sum += val.get();
+                }
+            } else if (key.equals(new Text("count"))) {
+                // Calculate count
+                for (IntWritable val : values) {
+                    count += val.get();
+                }
+            } else if (key.equals(new Text("distinct"))) {
+                // Collect distinct integers
+                for (IntWritable val : values) {
+                    distinctIntegers.add(val.get());
+                }
+            }
+        }
+
+        @Override
+        protected void cleanup(Context context) throws IOException, InterruptedException {
+            // Output results
+            context.write(new Text("Largest Integer"), new Text(String.valueOf(max)));
+            context.write(new Text("Average"), new Text(String.valueOf(sum / (double) count)));
+            context.write(new Text("Distinct Integers"), new Text(distinctIntegers.toString()));
+            context.write(new Text("Count of Distinct Integers"), new Text(String.valueOf(distinctIntegers.size())));
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "unique statistics");
+        job.setJarByClass(UniqueStatistics.class);
+        job.setMapperClass(StatsMapper.class);
+        job.setReducerClass(StatsReducer.class);
+
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
++++++++++++++++++++++Compile and Package
+javac -classpath $(hadoop classpath) -d unique_statistics_classes UniqueStatistics.java
+jar -cvf unique_statistics.jar -C unique_statistics_classes/ .
+
+Prepare Input File: Create a file (e.g., numbers.txt) containing integers, one per line.
+++++++++++++++++++Input File Example (numbers.txt)
+1
+2
+3
+4
+5
+5
+3
+6
+7
+8
+
+Run the Job:
+hadoop jar unique_statistics.jar UniqueStatistics numbers.txt output_dir
+
++++++++++++++++++Expected Output (part-r-00000)
+Largest Integer   8
+Average           4.5
+Distinct Integers [1, 2, 3, 4, 5, 6, 7, 8]
+Count of Distinct Integers 8
+
+

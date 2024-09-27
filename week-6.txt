@@ -1,0 +1,54 @@
++++++++++++++++++++++Basic Pig Commands
+1. Load Data
+To load a dataset from a file into a Pig relation:
+data = LOAD 'input.txt' USING PigStorage(',') AS (name: chararray, age: int, city: chararray);
+
+This command loads data from input.txt, assuming it's comma-separated. The data has three fields: name, age, and city.
+2. Dump Data
+To display the contents of a relation:
+DUMP data;
+This will print the loaded data to the console.
+3. Filter Data
+To filter the data based on certain criteria:
+filtered_data = FILTER data BY age > 25;
+This command filters out records where the age is less than or equal to 25.
+4. Group Data
+To group the data by a specific field:
+grouped_data = GROUP data BY city;
+5. Count Records
+To count the number of records in each group:
+count_data = FOREACH grouped_data GENERATE group, COUNT(data);
+This generates a new relation with the city and the count of records in that city.
+6. Store Data
+STORE count_data INTO 'output' USING PigStorage(',');
+Example Complete Script
+-- Load the data
+data = LOAD 'input.txt' USING PigStorage(',') AS (name: chararray, age: int, city: chararray);
+
+-- Filter the data
+filtered_data = FILTER data BY age > 25;
+
+-- Group the filtered data
+grouped_data = GROUP filtered_data BY city;
+
+-- Count the number of records in each group
+count_data = FOREACH grouped_data GENERATE group, COUNT(filtered_data);
+
+-- Store the results
+STORE count_data INTO 'output' USING PigStorage(',');
+Running the Script
+pig script.pig
+Common Functions and Commands in Pig
+DISTINCT: To get unique records:
+unique_data = DISTINCT data;
+ORDER BY: To sort the data:
+ordered_data = ORDER data BY age DESC;
+JOIN: To join two datasets:
+other_data = LOAD 'other_input.txt' USING PigStorage(',') AS (name: chararray, salary: float);
+joined_data = JOIN data BY city, other_data BY city;	
+
+FLATTEN: To convert nested tuples into flat tuples:
+flattened_data = FOREACH nested_data GENERATE FLATTEN(nested_field);
+REGEX: To filter using regex:
+regex_filtered_data = FILTER data BY name MATCHES '.*Smith.*';
+
