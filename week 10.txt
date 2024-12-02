@@ -1,18 +1,27 @@
 // Import necessary libraries
 import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.sql.SQLContext
 
 // Initialize SQLContext (available in Spark 1.6.0)
 val sqlContext = new SQLContext(sc)
 
-// Load the data (ensure the path is correct)
-val data = sqlContext.read.format("libsvm").load("data/mllib/sample_kmeans_data.txt")
+// Sample dataset: An RDD of LabeledPoint (label, features)
+val data = sc.parallelize(Seq(
+  LabeledPoint(0.0, Vectors.dense(1.0, 1.0)),
+  LabeledPoint(0.0, Vectors.dense(1.1, 1.1)),
+  LabeledPoint(1.0, Vectors.dense(3.0, 3.0)),
+  LabeledPoint(1.0, Vectors.dense(3.1, 3.1)),
+  LabeledPoint(2.0, Vectors.dense(5.0, 5.0)),
+  LabeledPoint(2.0, Vectors.dense(5.1, 5.1))
+))
 
-// Convert DataFrame to RDD of Vectors (KMeans expects an RDD of Vectors)
-val parsedData = data.rdd.map { row =>
-  Vectors.dense(row.getAs[org.apache.spark.sql.Row]("features").toArray)
-}
+// Convert to DataFrame (so we can use SQLContext's read format if needed in future)
+val dataFrame = sqlContext.createDataFrame(data)
+
+// Convert to RDD of Vectors (KMeans expects an RDD of Vectors)
+val parsedData = dataFrame.rdd.map(row => row.getAs[org.apache.spark.ml.linalg.Vector]("features"))
 
 // Initialize KMeans clustering
 val kmeans = new KMeans()
@@ -33,4 +42,3 @@ predictions.take(10).foreach(println)  // Show first 10 predictions
 // Print Cluster Centers
 println("Cluster Centers: ")
 model.clusterCenters.foreach(println)
-
