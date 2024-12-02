@@ -1,0 +1,284 @@
+
+//Week-9
+//Logistic Regression 
+
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+
+val evaluator = new MulticlassClassificationEvaluator()
+  .setLabelCol("label")
+  .setPredictionCol("prediction")
+  .setMetricName("accuracy")
+
+val accuracy = evaluator.evaluate(predictions)
+println(s"Test set accuracy = $accuracy")
+
+//___________________________________________
+//Decision Tree Classifier 
+
+// Import Libraries
+import org.apache.spark.ml.classification.DecisionTreeClassifier
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+import org.apache.spark.sql.SparkSession
+
+// Create Spark Session
+val spark = SparkSession.builder().appName("Decision Tree Classifier").getOrCreate()
+
+// Load Data
+val data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+
+// Split Data into Training and Testing Sets
+val Array(trainingData, testData) = data.randomSplit(Array(0.8, 0.2))
+
+// Initialize Decision Tree Classifier
+val dt = new DecisionTreeClassifier()
+  .setLabelCol("label")
+  .setFeaturesCol("features")
+
+// Train the Model
+val model = dt.fit(trainingData)
+
+// Make Predictions
+val predictions = model.transform(testData)
+
+// Evaluate the Model
+val evaluator = new MulticlassClassificationEvaluator()
+  .setLabelCol("label")
+  .setPredictionCol("prediction")
+  .setMetricName("accuracy")
+
+val accuracy = evaluator.evaluate(predictions)
+println(s"Test set accuracy = $accuracy")
+
+// Print the Decision Tree Model
+println(s"Learned classification tree model:\n ${model.toDebugString}")
+
+//_________________________________________________
+//Naive Bayes 
+// Import Libraries
+import org.apache.spark.ml.classification.NaiveBayes
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+import org.apache.spark.sql.SparkSession
+
+// Create Spark Session
+val spark = SparkSession.builder().appName("Naive Bayes Classifier").getOrCreate()
+
+// Load Data
+val data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+
+// Split Data into Training and Testing Sets
+val Array(trainingData, testData) = data.randomSplit(Array(0.8, 0.2))
+
+// Initialize Naive Bayes Classifier
+val nb = new NaiveBayes()
+  .setLabelCol("label")
+  .setFeaturesCol("features")
+  .setModelType("multinomial") // Options: "multinomial" or "bernoulli"
+
+// Train the Model
+val model = nb.fit(trainingData)
+
+// Make Predictions
+val predictions = model.transform(testData)
+
+// Evaluate the Model
+val evaluator = new MulticlassClassificationEvaluator()
+  .setLabelCol("label")
+  .setPredictionCol("prediction")
+  .setMetricName("accuracy")
+
+val accuracy = evaluator.evaluate(predictions)
+println(s"Test set accuracy = $accuracy")
+//______________________________________
+//Week-10
+// Import Libraries
+import org.apache.spark.ml.clustering.KMeans
+import org.apache.spark.ml.evaluation.ClusteringEvaluator
+import org.apache.spark.sql.SparkSession
+
+// Create Spark Session
+val spark = SparkSession.builder().appName("K-Means Clustering").getOrCreate()
+
+// Load Data
+val data = spark.read.format("libsvm").load("data/mllib/sample_kmeans_data.txt")
+
+// Initialize K-Means Clustering
+val kmeans = new KMeans()
+  .setK(3)                // Number of clusters
+  .setSeed(1L)            // Random seed
+  .setFeaturesCol("features")
+
+// Train the Model
+val model = kmeans.fit(data)
+
+// Make Predictions
+val predictions = model.transform(data)
+
+// Evaluate the Model
+val evaluator = new ClusteringEvaluator()
+
+val silhouette = evaluator.evaluate(predictions)
+println(s"Silhouette with squared euclidean distance = $silhouette")
+
+// Print Cluster Centers
+println("Cluster Centers: ")
+model.clusterCenters.foreach(println)
+
+//_______________________________________
+//Latent Dirichlet Allocation // Import Libraries
+import org.apache.spark.ml.clustering.LDA
+import org.apache.spark.sql.SparkSession
+
+// Create Spark Session
+val spark = SparkSession.builder().appName("Latent Dirichlet Allocation").getOrCreate()
+
+// Load Data
+val data = spark.read.format("libsvm").load("data/mllib/sample_lda_libsvm_data.txt")
+
+// Initialize LDA
+val lda = new LDA()
+  .setK(3)                // Number of topics
+  .setMaxIter(10)         // Number of iterations
+  .setFeaturesCol("features")
+
+// Train the Model
+val model = lda.fit(data)
+
+// Describe Topics
+val topics = model.describeTopics(5) // Get top 5 terms for each topic
+topics.show(false)
+
+// Transform Data
+val transformed = model.transform(data)
+transformed.show(false)
+//_________________________________________________
+//Gaussian Mixture Model (GMM)
+// Import Libraries
+import org.apache.spark.ml.clustering.GaussianMixture
+import org.apache.spark.sql.SparkSession
+
+// Create Spark Session
+val spark = SparkSession.builder().appName("Gaussian Mixture Model").getOrCreate()
+
+// Load Data
+val data = spark.read.format("libsvm").load("data/mllib/sample_kmeans_data.txt")
+
+// Initialize Gaussian Mixture Model
+val gmm = new GaussianMixture()
+  .setK(2)          // Number of clusters
+  .setFeaturesCol("features")
+  .setSeed(1L)      // Random seed for reproducibility
+
+// Train the Model
+val model = gmm.fit(data)
+
+// Make Predictions
+val predictions = model.transform(data)
+predictions.show(false)
+
+// Print Parameters of the Gaussian Components
+println("Gaussian Components:")
+model.gaussians.zipWithIndex.foreach { case (g, idx) =>
+  println(s"Cluster $idx:")
+  println(s"  Mean: ${g.mean}")
+  println(s"  Covariance: ${g.cov}")
+}
+
+//____________________________________
+//week-11
+// Import Libraries
+import org.apache.spark.ml.recommendation.ALS
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
+
+// Create Spark Session
+val spark = SparkSession.builder().appName("Collaborative Filtering").getOrCreate()
+
+// Load Sample Data (User, Item, Rating)
+val data = spark.read.option("header", "true").option("inferSchema", "true")
+  .csv("data/mllib/sample_movielens_ratings.txt")
+  .toDF("userId", "movieId", "rating", "timestamp")
+
+// Drop Timestamp (Optional) and Prepare Data
+val ratingData = data.select("userId", "movieId", "rating")
+
+// Split Data into Training and Testing Sets
+val Array(trainingData, testData) = ratingData.randomSplit(Array(0.8, 0.2))
+
+// Initialize ALS Model
+val als = new ALS()
+  .setUserCol("userId")
+  .setItemCol("movieId")
+  .setRatingCol("rating")
+  .setMaxIter(10)       // Number of iterations
+  .setRegParam(0.1)     // Regularization parameter
+  .setRank(10)          // Number of latent factors
+  .setColdStartStrategy("drop") // Avoid null predictions during evaluation
+
+// Train the Model
+val model = als.fit(trainingData)
+
+// Make Predictions
+val predictions = model.transform(testData)
+predictions.show(false)
+
+// Evaluate the Model
+import org.apache.spark.ml.evaluation.RegressionEvaluator
+
+val evaluator = new RegressionEvaluator()
+  .setMetricName("rmse")
+  .setLabelCol("rating")
+  .setPredictionCol("prediction")
+
+val rmse = evaluator.evaluate(predictions)
+println(s"Root-mean-square error = $rmse")
+
+// Recommend Top Movies for Each User
+val userRecs = model.recommendForAllUsers(5)
+userRecs.show(false)
+
+// Recommend Top Users for Each Movie
+val movieRecs = model.recommendForAllItems(5)
+movieRecs.show(false)
+
+//____________________________
+//Week 12
+// Import Libraries
+import org.apache.spark.ml.fpm.FPGrowth
+import org.apache.spark.sql.SparkSession
+
+// Create Spark Session
+val spark = SparkSession.builder().appName("FP-Growth").getOrCreate()
+
+// Load Data
+val data = spark.createDataFrame(Seq(
+  (0, Array("apple", "banana", "cherry")),
+  (1, Array("apple", "cherry")),
+  (2, Array("banana", "cherry")),
+  (3, Array("apple", "banana", "cherry", "date")),
+  (4, Array("apple", "banana"))
+)).toDF("id", "items")
+
+// Initialize FP-Growth Model
+val fpGrowth = new FPGrowth()
+  .setItemsCol("items")
+  .setMinSupport(0.2)   // Minimum support threshold
+  .setMinConfidence(0.3) // Minimum confidence threshold
+
+// Train the Model
+val model = fpGrowth.fit(data)
+
+// Display Frequent Itemsets
+println("Frequent Itemsets:")
+model.freqItemsets.show(false)
+
+// Display Association Rules
+println("Association Rules:")
+model.associationRules.show(false)
+
+// Display Predictions (Optional)
+println("Predictions for Transactions:")
+val predictions = model.transform(data)
+predictions.show(false)
+
+
+
