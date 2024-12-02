@@ -1,0 +1,40 @@
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LinearRegressionWithSGD
+import org.apache.spark.mllib.evaluation.RegressionMetrics
+import org.apache.spark.rdd.RDD
+
+// Step 1: Generate synthetic data (label, features)
+val data = sc.parallelize(Seq(
+  LabeledPoint(1.0, Vectors.dense(1.0, 2.0)),
+  LabeledPoint(2.0, Vectors.dense(1.0, 3.0)),
+  LabeledPoint(3.0, Vectors.dense(2.0, 3.0)),
+  LabeledPoint(4.0, Vectors.dense(2.0, 4.0)),
+  LabeledPoint(5.0, Vectors.dense(3.0, 4.0)),
+  LabeledPoint(6.0, Vectors.dense(3.0, 5.0))
+))
+
+// Step 2: Split the data into training and test sets
+val Array(trainingData, testData) = data.randomSplit(Array(0.7, 0.3))
+
+// Step 3: Train the Linear Regression model using LinearRegressionWithSGD
+val numIterations = 100  // Number of iterations for training
+val model = LinearRegressionWithSGD.train(trainingData, numIterations)
+
+// Step 4: Make predictions on the test data
+val predictions = testData.map { point =>
+  val prediction = model.predict(point.features)
+  (point.label, prediction)
+}
+
+// Step 5: Evaluate the model using RegressionMetrics
+val metrics = new RegressionMetrics(predictions)
+
+val rmse = metrics.rootMeanSquaredError
+val mse = metrics.meanSquaredError
+val r2 = metrics.r2
+
+// Print the evaluation metrics
+println(s"Root Mean Squared Error (RMSE) = $rmse")
+println(s"Mean Squared Error (MSE) = $mse")
+println(s"R-squared = $r2")
