@@ -47,3 +47,29 @@ predictions.select("features", "label", "prediction").show()
 // Step 9: Evaluate the model's performance (RMSE)
 val rmse = lrModel.summary.rootMeanSquaredError
 println(s"Root Mean Squared Error (RMSE): $rmse")
+
+
+
+
+
+
+
+
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.rdd.RDD
+
+// Assuming you already have your predictions in the form of an RDD[(Double, Double)] where 
+// the first element is the true label and the second element is the predicted label.
+
+val predictionAndLabels: RDD[(Double, Double)] = predictions.map { 
+  case (label, prediction) => (label, prediction) 
+}
+
+// Instantiate MulticlassMetrics with the prediction and label RDD
+val metrics = new MulticlassMetrics(predictionAndLabels)
+
+// Get the accuracy
+val accuracy = metrics.accuracy
+
+// Print the accuracy
+println(s"Test set accuracy = $accuracy")
