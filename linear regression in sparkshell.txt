@@ -1,0 +1,49 @@
+// Step 1: Import necessary libraries
+import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.ml.regression.LinearRegression
+import org.apache.spark.sql.functions._
+
+// Step 2: Generate synthetic data using RDD
+val data = Seq(
+  (1.0, 3.0, 1.0),
+  (2.0, 4.0, 2.0),
+  (3.0, 5.0, 3.0),
+  (4.0, 6.0, 4.0),
+  (5.0, 7.0, 5.0),
+  (6.0, 8.0, 6.0),
+  (7.0, 9.0, 7.0),
+  (8.0, 10.0, 8.0),
+  (9.0, 11.0, 9.0),
+  (10.0, 12.0, 10.0)
+)
+
+// Step 3: Create a DataFrame from the synthetic data
+val df = spark.createDataFrame(data).toDF("feature1", "feature2", "label")
+
+// Step 4: Assemble the features into a single vector column using VectorAssembler
+val assembler = new VectorAssembler()
+  .setInputCols(Array("feature1", "feature2"))
+  .setOutputCol("features")
+
+val assembledData = assembler.transform(df)
+
+// Step 5: Create and train the linear regression model
+val lr = new LinearRegression()
+  .setLabelCol("label")  // Set the target column
+  .setFeaturesCol("features")  // Set the features column
+
+val lrModel = lr.fit(assembledData)
+
+// Step 6: Print model coefficients and intercept
+println(s"Coefficients: ${lrModel.coefficients}")
+println(s"Intercept: ${lrModel.intercept}")
+
+// Step 7: Make predictions
+val predictions = lrModel.transform(assembledData)
+
+// Step 8: Show predictions alongside actual values
+predictions.select("features", "label", "prediction").show()
+
+// Step 9: Evaluate the model's performance (RMSE)
+val rmse = lrModel.summary.rootMeanSquaredError
+println(s"Root Mean Squared Error (RMSE): $rmse")
