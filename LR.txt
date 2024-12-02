@@ -1,0 +1,26 @@
+// Step 1: Create synthetic data using a sequence
+val data = Seq(
+  (1, "Alice", 30),
+  (2, "Bob", 25),
+  (3, "Cathy", 28),
+  (4, "David", 35),
+  (5, "Eva", 22)
+)
+
+// Step 2: Convert the sequence to a DataFrame
+val df = spark.createDataFrame(data).toDF("id", "name", "age")
+
+// Step 3: Show the DataFrame
+df.show()
+
+// Step 4: Perform basic operations
+// Get summary statistics for the 'age' column
+df.describe("age").show()
+
+// Step 5: Filter DataFrame (Find people older than 30)
+val filteredDF = df.filter("age > 30")
+filteredDF.show()
+
+// Step 6: Perform an operation on a column (increase age by 1 year)
+val updatedDF = df.withColumn("age_plus_one", df("age") + 1)
+updatedDF.show()
