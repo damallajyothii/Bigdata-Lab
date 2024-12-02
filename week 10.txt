@@ -1,0 +1,36 @@
+// Import necessary libraries
+import org.apache.spark.mllib.clustering.KMeans
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.sql.SQLContext
+
+// Initialize SQLContext (available in Spark 1.6.0)
+val sqlContext = new SQLContext(sc)
+
+// Load the data (ensure the path is correct)
+val data = sqlContext.read.format("libsvm").load("data/mllib/sample_kmeans_data.txt")
+
+// Convert DataFrame to RDD of Vectors (KMeans expects an RDD of Vectors)
+val parsedData = data.rdd.map { row =>
+  Vectors.dense(row.getAs[org.apache.spark.sql.Row]("features").toArray)
+}
+
+// Initialize KMeans clustering
+val kmeans = new KMeans()
+  .setK(3)                // Number of clusters
+  .setMaxIterations(10)   // Set the maximum number of iterations
+  .setSeed(1L)            // Random seed for initialization
+
+// Train the model
+val model = kmeans.run(parsedData)
+
+// Make predictions (assign each point to a cluster)
+val predictions = parsedData.map(point => (point, model.predict(point)))
+
+// Print the predictions
+println("Predictions:")
+predictions.take(10).foreach(println)  // Show first 10 predictions
+
+// Print Cluster Centers
+println("Cluster Centers: ")
+model.clusterCenters.foreach(println)
+
